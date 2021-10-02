@@ -1,9 +1,20 @@
 const express = require('express')
 const { Sequelize, DataTypes } = require('sequelize');
+const helmet = require('helmet')
+const compression = require('compression')
+const rateLimit = require("express-rate-limit");
+
+
 
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
-    dialect:'postgres'
-})
+    dialect:'postgres',
+    dialectOptions: {
+        ssl: {
+            require:true,
+            rejectUnauthorized:false
+        }
+    }
+});
 
 const NewReleaseData = sequelize.define('new-releases', {
     albumName: {
@@ -20,9 +31,17 @@ const NewReleaseData = sequelize.define('new-releases', {
     }
 })
 
-const app = express();
+const limiter = rateLimit({
+    windowMs: 1*60*1000, // 1 minutes
+    max:10 //limit each IP to 10 requests per windowMs
+});
 
+
+const app = express();
+app.use(helmet());
+app.use(compression());
 app.use(express.json());
+app.use(limiter);
 
 
 app.get('/new-releases', async (req, res) => {
